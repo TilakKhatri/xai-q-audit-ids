@@ -1,0 +1,3 @@
+Dataset,Attack_Index,Original_Prediction,Adversarial_Prediction,Original_Attack_Probability,Adversarial_Attack_Probability,L2_Perturbation,Linf_Perturbation,Mean_Absolute_Perturbation,Changed_Features,Total_Features,Attack_Success
+KDDCup99_10k,1085,1,0,0.9999597115577643,0.4999728752260398,0.010696214623749256,0.007883001118898392,0.0009139379835687578,32,41,True
+UNSW-NB15_10k,7827,1,0,0.9995849401220156,0.4,0.6715716123580933,0.5928140878677368,0.04461178183555603,41,45,True
