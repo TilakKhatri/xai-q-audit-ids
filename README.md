@@ -21,7 +21,7 @@ Designed for resource-constrained environments (≤4GB GPU, CPU-only training), 
 |-----------|---------------|
 | **CPU** | Intel i5 / Ryzen 5 or equivalent (4+ cores) |
 | **GPU** | 4GB NVIDIA (optional; pipeline runs on CPU) |
-| **RAM** | 8GB+ recommended (16GB ideal) |
+| **RAM** | 4GB+ recommended (16GB ideal) |
 | **OS** | Windows 10/11, Ubuntu 20.04+, macOS |
 | **Python** | 3.8–3.11 |
 
