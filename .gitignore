@@ -55,3 +55,6 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+/practical_test/UNSW-NB15_3.csv
+/practical_test/kdd99.csv
