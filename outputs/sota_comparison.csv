@@ -1,0 +1,12 @@
+Dataset,System,Acc,F1,ESS_SHAP,ESS_LIME,XAI_Q_SHAP,XAI_Q_LIME
+KDDCup99,Dhaliwal et al. (2018) RF,0.999,0.998,,,,
+KDDCup99,Lundberg & Lee (2017) SHAP,,,0.91,,0.71,
+KDDCup99,Ours — RF + XAI-Q (KDDCup99_10k),0.997,0.9981,0.5059,0.141,0.6892,0.4753
+KDDCup99,Ribeiro et al. (2016) LIME,,,,0.72,,0.58
+KDDCup99,Ring et al. (2019) Survey RF,0.996,0.995,,,,
+KDDCup99,Tavallaee et al. (2009) NB,0.991,0.99,,,,
+UNSW-NB15,Arrieta et al. (2020) SHAP audit,,,0.88,,0.68,
+UNSW-NB15,Kasongo & Sun (2020) RF,0.978,0.974,,,,
+UNSW-NB15,Moustafa & Slay (2016) Original,0.857,0.87,,,,
+UNSW-NB15,Ours — RF + XAI-Q (UNSW-NB15_10k),1.0,1.0,0.5385,0.3059,0.5145,0.4478
+UNSW-NB15,Ribeiro et al. (2016) LIME,,,,0.69,,0.55
