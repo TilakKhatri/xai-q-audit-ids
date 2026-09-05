@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IDS Log Analyzer</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 50px auto; }
+        .container { border: 1px solid #ccc; padding: 20px; border-radius: 5px; }
+        button { background-color: #4CAF50; color: white; padding: 10px 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #4CAF50; color: white; }
+        .attack { background-color: #ffcccc; }
+        .normal { background-color: #ccffcc; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SOC Network Log Analyzer</h1>
+        <p>Upload KDD Cup 99 or similar network logs (.csv or .txt, with or without a header/label column)</p>
+        
+        <form id="uploadForm">
+            <input type="file" id="csvFile" accept=".csv,.txt" required>
+            <button type="submit">Analyze Logs</button>
+        </form>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('file', document.getElementById('csvFile').files[0]);
+            
+            const response = await fetch('/predict', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            if (!response.ok) {
+                document.getElementById('results').innerHTML = `<p style="color:red;"><strong>Error:</strong> ${data.error}</p>`;
+                return;
+            }
+
+            // Display results
+            const t = data.timing_ms;
+            const r = data.resource_usage;
+            const accuracyHtml = data.has_ground_truth
+                ? `<p><strong>Ground Truth Accuracy:</strong> ${(data.accuracy * 100).toFixed(2)}%</p>`
+                : '';
+            let html = `<h2>Analysis Results</h2>
+                       <p><strong>Total Logs Analyzed:</strong> ${data.total_logs}</p>
+                       <p style="color: red;"><strong>Attacks Detected:</strong> ${data.attacks_detected}</p>
+                       ${accuracyHtml}
+                       <h3>Timing (ms)</h3>
+                       <p>File Read: ${t.file_read_ms} | Preprocess: ${t.preprocess_ms} | Inference: ${t.inference_ms} | Postprocess: ${t.postprocess_ms} | <strong>Total: ${t.total_ms}</strong></p>
+                       <h3>Resource Usage</h3>
+                       <p>CPU (user/system): ${r.cpu_time_user_s}s / ${r.cpu_time_system_s}s | Memory RSS: ${r.memory_rss_mb} MB (Δ ${r.memory_delta_mb} MB)</p>
+                       <table>
+                       <tr><th>Row</th><th>Classification</th>${data.has_ground_truth ? '<th>Ground Truth</th><th>Correct?</th>' : ''}<th>Confidence</th><th>Action</th></tr>`;
+            
+            data.results.forEach(r => {
+                const rowClass = r.Actual_Class === 'Attack' ? 'attack' : 'normal';
+                const groundTruthCols = data.has_ground_truth
+                    ? `<td>${r.Ground_Truth_Label}</td><td>${r.Prediction_Correct ? '✔' : '✘'}</td>`
+                    : '';
+                html += `<tr class="${rowClass}">
+                         <td>${r.Row}</td>
+                         <td>${r.Actual_Class}</td>
+                         ${groundTruthCols}
+                         <td>${r.Confidence}</td>
+                         <td>${r.Remark}</td></tr>`;
+            });
+            
+            html += '</table>';
+            document.getElementById('results').innerHTML = html;
+        });
+    </script>
+</body>
+</html>
