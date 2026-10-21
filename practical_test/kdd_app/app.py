@@ -1,11 +1,14 @@
+import csv
 import os
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import joblib
 import numpy as np
 import pandas as pd
 import psutil
+import sklearn
 from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
@@ -20,7 +23,48 @@ feature_columns = joblib.load(MODEL_DIR / "feature_columns.joblib")
 
 CATEGORICAL_COLS = ["protocol_type", "service", "flag"]
 LABELS_ENCODER = label_encoders['labels']
-process = psutil.Process(os.getpid())
+MODEL_SIZE_MB = round((MODEL_DIR / "rf_kdd_model.joblib").stat().st_size / (1024 ** 2), 2)
+
+# tag runs with the limits they were launched under (set via `docker run -e`) so a sweep is comparable
+CPU_LIMIT = os.environ.get("CPU_LIMIT", "unset")
+MEM_LIMIT_MB = os.environ.get("MEM_LIMIT_MB", "unset")
+# appended-to, not overwritten, so results from many runs/limits accumulate into one experiment table
+RESULTS_LOG = Path(os.environ.get("RESULTS_LOG", str(Path(__file__).resolve().parent / "outputs" / "results.csv")))
+RESULTS_LOG.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _log_experiment_row(response):
+    """Append one row per /predict call: the raw data needed for resource-constraint plots/tables."""
+    row = {
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'cpu_limit': CPU_LIMIT,
+        'mem_limit_mb': MEM_LIMIT_MB,
+        'sklearn_version': sklearn.__version__,
+        'model_size_mb': MODEL_SIZE_MB,
+        'n_rows': response['total_logs'],
+        'attacks_detected': response['attacks_detected'],
+        'accuracy': response.get('accuracy', ''),
+        **response['timing_ms'],
+        **response['resource_usage'],
+    }
+    # exclusive lock file, since 2 gunicorn workers can append to RESULTS_LOG at the same time otherwise
+    lock_path = RESULTS_LOG.with_suffix(RESULTS_LOG.suffix + '.lock')
+    while True:
+        try:
+            lock_fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except FileExistsError:
+            time.sleep(0.01)
+    try:
+        write_header = not RESULTS_LOG.exists()
+        with open(RESULTS_LOG, 'a', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=row.keys())
+            if write_header:
+                writer.writeheader()
+            writer.writerow(row)
+    finally:
+        os.close(lock_fd)
+        os.remove(lock_path)
 
 
 def _is_header_row(first_value) -> bool:
@@ -71,9 +115,12 @@ def home():
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    # bind per-request, not at import time: under --preload, os.getpid() at import
+    # time captures the master's PID, not the forked worker that handles this request
+    proc = psutil.Process(os.getpid())
     t_start = time.perf_counter()
-    cpu_before = process.cpu_times()
-    mem_before = process.memory_info().rss
+    cpu_before = proc.cpu_times()
+    mem_before = proc.memory_info().rss
 
     try:
         df, actual_labels = load_uploaded_logs(request.files['file'])
@@ -115,8 +162,8 @@ def predict():
         results.append(entry)
     t_end = time.perf_counter()
 
-    cpu_after = process.cpu_times()
-    mem_after = process.memory_info().rss
+    cpu_after = proc.cpu_times()
+    mem_after = proc.memory_info().rss
 
     response = {
         'total_logs': len(results),
@@ -140,6 +187,7 @@ def predict():
     if actual_labels is not None:
         response['accuracy'] = round(sum(r['Prediction_Correct'] for r in results) / len(results), 4)
 
+    _log_experiment_row(response)
     return jsonify(response)
 
 

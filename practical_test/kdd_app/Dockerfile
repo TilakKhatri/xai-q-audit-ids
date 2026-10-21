@@ -18,7 +18,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Run as non-root user for security
-RUN useradd --create-home --shell /bin/bash appuser
+RUN useradd --create-home --shell /bin/bash appuser \
+    && mkdir -p /app/outputs && chown -R appuser:appuser /app/outputs
 USER appuser
 
 ENV MODEL_DIR=/app/models/kdd
@@ -26,6 +27,10 @@ ENV MODEL_DIR=/app/models/kdd
 EXPOSE 5000
 
 # Recommended resource limits (enforce at run/orchestration time, e.g.):
-#   docker run --cpus="1.0" --memory="512m" --memory-swap="512m" -p 5000:5000 kdd-ids-app
+#   docker run --cpus="1.0" --memory="512m" --memory-swap="512m" \
+#     -e CPU_LIMIT=1.0 -e MEM_LIMIT_MB=512 \
+#     -v ${PWD}/outputs:/app/outputs \
+#     -p 5000:5000 kdd-ids-app
+# CPU_LIMIT/MEM_LIMIT_MB just tag rows in outputs/results.csv - keep them in sync with --cpus/--memory above.
 # For docker-compose, use deploy.resources.limits (cpus: "1.0", memory: 512M)
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "60", "app:app"]
+CMD ["gunicorn", "--preload", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "60", "app:app"]
