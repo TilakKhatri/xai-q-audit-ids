@@ -9,6 +9,7 @@ develop-eggs/
 dist/
 downloads/
 eggs/
+paper/
 .eggs/
 lib/
 lib64/
@@ -55,3 +56,5 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+# Local datasets
+data/
