@@ -36,6 +36,7 @@ env/
 
 # IDE
 .vscode/
+.agents/
 .idea/
 *.swp
 *.swo
